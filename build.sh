@@ -421,8 +421,14 @@ function clone_update() {
 	return
     fi
     if [ ! -d "$target" ] ; then
-	info "Cloning from $srcurl"
-	run git clone "$srcurl" "$target" --branch "$branch"
+	info "Cloning from $GITHUB_BASEURL/$srcurl"
+	if run git clone "$GITHUB_BASEURL/$srcurl" "$target" --branch "$branch"; then
+		echo ""
+	else
+		info "Failed to clone from $GITHUB_BASEURL/$srcurl"
+		info "Cloning from $GITHUB_TCRESTURL/$srcurl"
+		run git clone "$GITHUB_TCRESTURL/$srcurl" "$target" --branch "$branch"
+	fi
     elif [ ${DO_UPDATE} != false ] ; then
         #TODO find a better way (e.g. stash away only on demand)
 	info "Updating $1"
@@ -737,7 +743,7 @@ function build_compiler_rt() {
     # source repository dir (relative path, always to same compiler-rt checkout, independent of build-dir)
     local repo=$(get_repo_dir compiler-rt)
 
-    clone_update ${GITHUB_BASEURL}/patmos-compiler-rt.git $repo
+    clone_update patmos-compiler-rt.git $repo
     build_cmake compiler-rt make_default $builddir \
         "-DTRIPLE=${target} -DCMAKE_TOOLCHAIN_FILE=$ROOT_DIR/$repo/cmake/patmos-clang-toolchain.cmake -DCMAKE_PROGRAM_PATH=${INSTALL_DIR}/bin"
 }
@@ -749,7 +755,7 @@ function build_newlib() {
     local target=$2
     # source repository dir (relative path, always to same newlib ckeckout, independent of build-dir)
     local repo=$(get_repo_dir newlib)
-    clone_update ${GITHUB_BASEURL}/patmos-newlib.git $repo
+    clone_update patmos-newlib.git $repo
 
     # Use a different install script for newlib that does not change the modification time if
     # the files did not change.
@@ -1065,9 +1071,9 @@ build_target() {
   fi
   case $target in
   'llvm')
-    clone_update ${GITHUB_BASEURL}/patmos-llvm.git $(get_repo_dir llvm)
+    clone_update patmos-llvm.git $(get_repo_dir llvm)
     if [ "$LLVM_OMIT_CLANG" != "true" ]; then
-        clone_update ${GITHUB_BASEURL}/patmos-clang.git $(get_repo_dir llvm)/tools/clang
+        clone_update patmos-clang.git $(get_repo_dir llvm)/tools/clang
     fi
     build_llvm
     ;;
@@ -1078,7 +1084,7 @@ build_target() {
     build_llvm eclipse
     ;;
   'gold')
-    clone_update ${GITHUB_BASEURL}/patmos-gold.git $(get_repo_dir gold)
+    clone_update patmos-gold.git $(get_repo_dir gold)
     build_autoconf gold make_gold $(get_build_dir gold) --program-prefix=patmos- --enable-gold=yes --enable-ld=no --disable-werror "$GOLD_ARGS"
     ;;
   'newlib')
@@ -1091,7 +1097,7 @@ build_target() {
     build_otawa $(get_build_dir otawa)
     ;;
   'patmos')
-    clone_update ${GITHUB_BASEURL}/patmos.git $(get_repo_dir patmos)
+    clone_update patmos.git $(get_repo_dir patmos)
     build_tools
     if [ "$BUILD_EMULATOR" == "false" ]; then
 	info "Skipping patmos emulator in patmos."
@@ -1101,12 +1107,12 @@ build_target() {
     fi
     ;;
   'aegean')
-    clone_update ${GITHUB_BASEURL}/argo.git $(get_repo_dir argo)
-    clone_update ${GITHUB_BASEURL}/aegean.git $(get_repo_dir aegean)
+    clone_update argo.git $(get_repo_dir argo)
+    clone_update aegean.git $(get_repo_dir aegean)
     build_aegean $(get_build_dir aegean)
     ;;
   'poseidon')
-    clone_update ${GITHUB_BASEURL}/poseidon.git $(get_repo_dir poseidon)
+    clone_update poseidon.git $(get_repo_dir poseidon)
     build_poseidon $(get_build_dir poseidon)
     ;;
   'bench')
@@ -1129,7 +1135,7 @@ build_target() {
     ;;
   'rtems')
     # following the readme instructions in rtems.git/readme.txt
-    clone_update ${GITHUB_BASEURL}/rtems.git $(get_repo_dir rtems/rtems)
+    clone_update rtems.git $(get_repo_dir rtems/rtems)
     build_rtems
     ;;
   "rtems-test")
@@ -1182,12 +1188,12 @@ while getopts ":crhi:j:pudsvxVtoea" opt; do
 done
 shift $((OPTIND-1))
 
-
+GITHUB_TCRESTURL="https://github.com/t-crest"
 if [ "$GITHUB_BASEURL" == "auto" ]; then
   GITHUB_BASEURL=$(cd $(dirname $self) && git remote -v  | grep -e "^origin.*/patmos-misc.git (push)" | sed "s/origin\s*\(.*\)\/patmos-misc.git .*/\1/")
 fi
 if [ -z "$GITHUB_BASEURL" ]; then
-  GITHUB_BASEURL="https://github.com/t-crest"
+  GITHUB_BASEURL=$GITHUB_TCRESTURL
 fi
 
 LIBEXT=so
